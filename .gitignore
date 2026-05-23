@@ -1,0 +1,53 @@
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Build outputs
+build/
+dist/
+.next/
+out/
+*.tsbuildinfo
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Cache
+.eslintcache
+*.log
+
+# IDE and system files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Test and temporary files
+*.test.mjs
+*.spec.mjs
+test_*.mjs
+tasas_pdf_text.txt
+parse_tasas_pdf.mjs
+
+# Runtime data
+data/
+
+# HTML files (if for local testing only)
+bopba.html
+bopba_results.html

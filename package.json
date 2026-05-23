@@ -1,0 +1,27 @@
+{
+  "name": "argentina-bopba-mcp",
+  "version": "1.0.0",
+  "description": "Boletín Oficial de la Provincia de Buenos Aires MCP server",
+  "type": "module",
+  "bin": {
+    "argentina-bopba-mcp": "./build/index.js"
+  },
+  "main": "build/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node build/index.js",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.6.0",
+    "axios": "^1.7.9",
+    "cheerio": "^1.0.0",
+    "pdf-parse": "^1.1.1",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/pdf-parse": "^1.1.5",
+    "typescript": "^5.7.2"
+  }
+}
