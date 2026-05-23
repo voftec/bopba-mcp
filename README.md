@@ -116,20 +116,20 @@ El servidor expone **15 herramientas especializadas** diseñadas para interactua
 
 | Herramienta | Descripción Técnica | Parámetros Clave |
 |---|---|---|
-| `buscar_boletin` | Búsqueda avanzada de boletines con filtros múltiples | `criterio`, `seccion`, `fechaDesde`, `fechaHasta`, `nroBoletin`, `pagina` |
-| `descargar_seccion` | Descarga y extrae texto de PDFs de secciones específicas | `nroBoletin`, `seccion` |
-| `obtener_ultimo_boletin` | Recupera el último boletín publicado con metadatos | *(Ninguno)* |
-| `ver_seccion` | Vista previa de secciones específicas de un boletín | `nroBoletin`, `seccion` |
-| `listar_ediciones_anteriores` | Lista ediciones históricas con paginación | `fechaDesde`, `fechaHasta`, `pagina` |
-| `buscar_por_semantica` | Búsqueda semántica con expansión de términos | `criterio`, `seccion`, `fechaDesde`, `fechaHasta` |
-| `verificar_vigencia` | Verifica disponibilidad y modificaciones de publicaciones | `nroBoletin`, `seccion`, `idPublicacion` |
-| `relacionar_publicaciones` | Busca publicaciones relacionadas por tema o criterio | `criterio`, `nroBoletin`, `seccion` |
-| `detector_plazos_edictos` | Detecta plazos y fechas límite en edictos | `textoEdicto` o `nroBoletin`, `seccion` |
-| `exportar_seccion` | Exporta secciones a Markdown con frontmatter YAML | `nroBoletin`, `seccion`, `formato` |
-| `generar_certificacion_forense` | Genera certificación con hash SHA-256 para inalterabilidad | `nroBoletin`, `seccion`, `idPublicacion` |
-| `calcular_tarifa` | Calcula tasas de publicación según tipo y características | `tipoAviso`, `caracteristicas`, `paginas` |
-| `actualizar_tasas` | Actualiza tasas desde PDF oficial del BOPBA | *(Ninguno)* |
-| `listar_agencias` | Directorio de agencias del BOPBA para contacto | `provincia`, `localidad` |
+| `buscar_boletin` | Búsqueda avanzada de boletines con filtros múltiples | `words`, `date_gteq`, `date_lteq`, `section`, `sort`, `page` |
+| `descargar_seccion` | Descarga y extrae texto de PDFs de secciones específicas | `id` |
+| `obtener_ultimo_boletin` | Recupera el último boletín publicado con sus secciones | *(Ninguno)* |
+| `ver_seccion` | Vista previa de secciones específicas con metadatos | `id` |
+| `listar_ediciones_anteriores` | Lista ediciones históricas con paginación | `date_gteq`, `date_lteq`, `page` |
+| `buscar_por_semantica` | Búsqueda semántica con expansión de términos equivalentes | `concepto`, `terminos_equivalentes`, `fecha_desde`, `fecha_hasta`, `seccion` |
+| `verificar_vigencia` | Verifica disponibilidad y modificaciones de publicaciones | `id` |
+| `relacionar_publicaciones` | Busca publicaciones relacionadas por tema o criterio | `id`, `palabras_clave`, `fecha_desde`, `fecha_hasta` |
+| `detector_plazos_edictos` | Detecta plazos y fechas límite en edictos (especialmente sucesorios) | `id`, `texto_manual` |
+| `exportar_seccion` | Exporta secciones a Markdown con frontmatter YAML | `id`, `incluir_texto` |
+| `generar_certificacion_forense` | Genera certificación con hash SHA-256 para inalterabilidad | `id` |
+| `calcular_tarifa` | Calcula aproximación de tasas de publicación (usa web para valores exactos) | `categoria`, `texto`, `dias`, `urgencia`, `actualizar` |
+| `actualizar_tasas` | Actualiza tasas desde PDF oficial del BOPBA | `forzar` |
+| `listar_agencias` | Directorio de agencias del BOPBA para contacto | *(Ninguno)* |
 | `alcance_fuente` | Información sobre la fuente legal, limitaciones y disclaimer | *(Ninguno)* |
 
 ---

@@ -29,28 +29,182 @@ if (!fs.existsSync(dataDir)) {
 }
 
 function parseTasasFromPDF(text: string): any {
-  const tasas: any = {
-    "Edictos sucesorios": {
-      normal: { "1": { ut: 14, ars: 3850 }, "3": { ut: 42, ars: 11550 } },
-      urgente: { "1": { ut: 28, ars: 7700 }, "3": { ut: 84, ars: 23100 } }
-    },
-    "Avisos por palabras": {
-      normal: [
-        { min: 1, max: 70, ut: 34, ars: 9350 },
-        { min: 71, max: 150, ut: 72, ars: 19800 },
-        { min: 151, max: 200, ut: 97, ars: 26675 }
-      ],
-      urgente: [
-        { min: 1, max: 70, ut: 68, ars: 18700 },
-        { min: 71, max: 150, ut: 144, ars: 39600 },
-        { min: 151, max: 200, ut: 192, ars: 52800 }
-      ]
-    },
-    "Balances": { normal: { ut: 1820, ars: 500500 }, urgente: { ut: 3640, ars: 1001000 } },
-    "Entidades Financieras": { normal: { ut: 620, ars: 170500 }, urgente: { ut: 1240, ars: 341000 } },
-    "Otras Sociedades": { normal: { ut: 146, ars: 40150 }, urgente: { ut: 290, ars: 79750 } },
-    "Constitución de SAS": { normal: { ut: 146, ars: 40150 }, urgente: { ut: 290, ars: 79750 } }
+  const tasas: any = {};
+  
+  // Helper to extract price and UT from text like "$ 3.850 (14 UT)"
+  const extractPriceAndUT = (line: string): { ars: number, ut: number } | null => {
+    const priceMatch = line.match(/\$\s*([\d.]+)/);
+    const utMatch = line.match(/\((\d+)\s*UT\)/);
+    if (priceMatch && utMatch) {
+      return {
+        ars: parseInt(priceMatch[1].replace(/\./g, '')),
+        ut: parseInt(utMatch[1])
+      };
+    }
+    return null;
   };
+
+  // Parse EDICTOS SUCESORIOS
+  // Structure: prices, day labels, urgent prices, type labels
+  const edictosSection = text.match(/EDICTOS SUCESORIOS([\s\S]*?)(?=AVISOS POR PALABRAS|$)/);
+  if (edictosSection) {
+    const sectionText = edictosSection[1];
+    const lines = sectionText.split('\n').map(l => l.trim()).filter(l => l);
+    
+    tasas["Edictos sucesorios"] = {
+      normal: {},
+      urgente: {}
+    };
+
+    // Extract all prices first
+    const prices: any[] = [];
+    lines.forEach(line => {
+      const priceData = extractPriceAndUT(line);
+      if (priceData) prices.push(priceData);
+    });
+
+    // Map prices based on PDF structure
+    // Normal: 1 day = prices[0], 3 days = prices[1]
+    // Urgent: 1 day = prices[2], 3 days = prices[3]
+    if (prices.length >= 4) {
+      tasas["Edictos sucesorios"].normal["1"] = prices[0];
+      tasas["Edictos sucesorios"].normal["3"] = prices[1];
+      tasas["Edictos sucesorios"].urgente["1"] = prices[2];
+      tasas["Edictos sucesorios"].urgente["3"] = prices[3];
+    }
+  }
+
+  // Parse AVISOS POR PALABRAS
+  // Structure: type label, prices, word ranges
+  const avisosSection = text.match(/AVISOS POR PALABRAS([\s\S]*?)(?=OTROS AVISOS|$)/);
+  if (avisosSection) {
+    const sectionText = avisosSection[1];
+    const lines = sectionText.split('\n').map(l => l.trim()).filter(l => l);
+    
+    tasas["Avisos por palabras"] = {
+      normal: [],
+      urgente: []
+    };
+
+    let currentType: 'normal' | 'urgente' | null = null;
+    let currentPrices: any[] = [];
+    let currentRanges: Array<{min: number, max: number}> = [];
+
+    for (const line of lines) {
+      if (line.includes('Trámite Normal') || line.includes('72 hs')) {
+        currentType = 'normal';
+        currentPrices = [];
+        currentRanges = [];
+        continue;
+      }
+      if (line.includes('Trámite Urgente') || line.includes('24 hs')) {
+        currentType = 'urgente';
+        currentPrices = [];
+        currentRanges = [];
+        continue;
+      }
+      
+      // Extract word ranges like "De 1 a 70 Palabras"
+      const rangeMatch = line.match(/De\s+(\d+)\s+a\s+(\d+)\s+Palabras/);
+      if (rangeMatch && currentType) {
+        currentRanges.push({
+          min: parseInt(rangeMatch[1]),
+          max: parseInt(rangeMatch[2])
+        });
+        continue;
+      }
+      
+      const priceData = extractPriceAndUT(line);
+      if (priceData && currentType) {
+        currentPrices.push(priceData);
+      }
+    }
+
+    // Map prices to ranges for each type
+    if (currentType === 'normal' || tasas["Avisos por palabras"].normal.length === 0) {
+      // Process normal section
+      const normalLines = lines.slice(lines.indexOf('Trámite Normal') + 1, lines.indexOf('Trámite Urgente'));
+      const normalPrices: any[] = [];
+      const normalRanges: Array<{min: number, max: number}> = [];
+      
+      normalLines.forEach(line => {
+        const priceData = extractPriceAndUT(line);
+        if (priceData) normalPrices.push(priceData);
+        const rangeMatch = line.match(/De\s+(\d+)\s+a\s+(\d+)\s+Palabras/);
+        if (rangeMatch) {
+          normalRanges.push({
+            min: parseInt(rangeMatch[1]),
+            max: parseInt(rangeMatch[2])
+          });
+        }
+      });
+
+      for (let i = 0; i < Math.min(normalPrices.length, normalRanges.length); i++) {
+        tasas["Avisos por palabras"].normal.push({
+          ...normalRanges[i],
+          ...normalPrices[i]
+        });
+      }
+    }
+
+    // Process urgent section - reuse ranges from normal section
+    const urgentStartIndex = lines.indexOf('Trámite Urgente');
+    if (urgentStartIndex >= 0) {
+      const urgentLines = lines.slice(urgentStartIndex + 1);
+      const urgentPrices: any[] = [];
+      
+      urgentLines.forEach(line => {
+        const priceData = extractPriceAndUT(line);
+        if (priceData) urgentPrices.push(priceData);
+      });
+
+      // Reuse the same ranges from normal section
+      for (let i = 0; i < Math.min(urgentPrices.length, tasas["Avisos por palabras"].normal.length); i++) {
+        const normalRange = tasas["Avisos por palabras"].normal[i];
+        tasas["Avisos por palabras"].urgente.push({
+          min: normalRange.min,
+          max: normalRange.max,
+          ...urgentPrices[i]
+        });
+      }
+    }
+  }
+
+  // Parse OTROS AVISOS
+  // Structure: 3 normal prices, category labels, type labels, 3 urgent prices
+  // Note: Otras Sociedades and Constitución de SAS have the same rates
+  const otrosSection = text.match(/OTROS AVISOS([\s\S]*?)(?=TASAS ADMINISTRATIVAS|$)/);
+  if (otrosSection) {
+    const sectionText = otrosSection[1];
+    const lines = sectionText.split('\n').map(l => l.trim()).filter(l => l);
+    
+    const categories = ['Balances', 'Entidades Financieras', 'Otras Sociedades', 'Constitución de SAS'];
+    categories.forEach(cat => {
+      tasas[cat] = { normal: {}, urgente: {} };
+    });
+
+    // Extract all prices
+    const prices: any[] = [];
+    lines.forEach(line => {
+      const priceData = extractPriceAndUT(line);
+      if (priceData) prices.push(priceData);
+    });
+
+    // Map prices to categories based on PDF structure
+    // Normal: Balances[0], Entidades[1], Otras/SAS[2] (shared)
+    // Urgent: Balances[3], Entidades[4], Otras/SAS[5] (shared)
+    if (prices.length >= 6) {
+      tasas["Balances"].normal = prices[0];
+      tasas["Entidades Financieras"].normal = prices[1];
+      tasas["Otras Sociedades"].normal = prices[2];
+      tasas["Constitución de SAS"].normal = prices[2]; // Same as Otras Sociedades
+      tasas["Balances"].urgente = prices[3];
+      tasas["Entidades Financieras"].urgente = prices[4];
+      tasas["Otras Sociedades"].urgente = prices[5];
+      tasas["Constitución de SAS"].urgente = prices[5]; // Same as Otras Sociedades
+    }
+  }
+
   return tasas;
 }
 
@@ -426,7 +580,7 @@ export const registerAllTools = (server: McpServer) => {
 
   server.tool(
     "calcular_tarifa",
-    "Calcula la tarifa de publicación en el BOPBA basándose en las tasas oficiales del flyer actualizado (auto-actualizable desde PDF oficial)",
+    "Calcula una aproximación de la tarifa de publicación en el BOPBA basándose en las tasas oficiales del flyer. NOTA: Este cálculo es una aproximación. Para obtener el precio exacto, códigos QR de pago y enlaces de pago oficiales, debe utilizar el simulador web: https://tasador.boletinoficial.gba.gob.ar/",
     {
       categoria: z.enum(["Edictos sucesorios", "Avisos por palabras", "Balances", "Entidades Financieras", "Otras Sociedades", "Constitución de SAS"]).describe("Categoría de publicación según el flyer de tasas oficial"),
       texto: z.string().optional().describe("Texto a publicar (requerido para 'Avisos por palabras' para contar palabras)"),
@@ -448,7 +602,8 @@ export const registerAllTools = (server: McpServer) => {
           categoria,
           urgencia,
           calculo: null,
-          nota: ""
+          nota: "",
+          advertencia: "⚠️ IMPORTANTE: Este cálculo es una APROXIMACIÓN basada en el flyer de tasas oficial. Para obtener el precio exacto, códigos QR de pago y enlaces de pago oficiales, debe utilizar el simulador web: https://tasador.boletinoficial.gba.gob.ar/"
         };
 
         if (categoria === "Edictos sucesorios") {
@@ -496,8 +651,9 @@ export const registerAllTools = (server: McpServer) => {
           };
         }
 
-        resultado.fuente = "Flyer de Tasas Oficial BOPBA (Art. 57 Ley 15.558)";
+        resultado.fuente = "Flyer de Tasas Oficial BOPBA (Art. 57 Ley 15.558) - APROXIMACIÓN";
         resultado.url_verificacion = "https://tasador.boletinoficial.gba.gob.ar/";
+        resultado.url_pago_oficial = "https://tasador.boletinoficial.gba.gob.ar/";
         resultado.version_tasas = tasasData.version;
         resultado.ultima_actualizacion = tasasData.lastUpdated;
 

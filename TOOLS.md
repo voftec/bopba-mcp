@@ -1,23 +1,22 @@
-# Herramientas y Prompts (TOOLS.md)
+# Herramientas del Servidor MCP BOPBA (Tools)
 
-Este documento detalla las herramientas (Tools) implementadas por el servidor para el MCP del Boletín Oficial de la Provincia de Buenos Aires (BOPBA), así como los Prompts programáticos disponibles según la especificación V2.
+Este servidor expone **15 herramientas (tools)** diseñadas para interactuar con el Boletín Oficial de la Provincia de Buenos Aires (BOPBA).
 
-## Herramientas (Tools)
+---
+
+## Búsqueda
 
 ### 1. `buscar_boletin`
+
 Busca boletines oficiales usando la página de búsqueda del BOPBA con filtros avanzados.
 
 **Parámetros:**
 - `words` (string, opcional): Palabras clave para la búsqueda.
-- `date_gteq` (string, opcional): Fecha de inicio de la búsqueda en formato YYYY-MM-DD.
-- `date_lteq` (string, opcional): Fecha de fin de la búsqueda en formato YYYY-MM-DD.
-- `section` (enum, opcional): Sección del boletín para filtrar (OFICIAL, JUDICIAL, JURISPRUDENCIA, SUPLEMENTO).
+- `date_gteq` (string, opcional): Fecha de inicio en formato YYYY-MM-DD.
+- `date_lteq` (string, opcional): Fecha de fin en formato YYYY-MM-DD.
+- `section` (enum, opcional): Sección del boletín (OFICIAL, JUDICIAL, JURISPRUDENCIA, SUPLEMENTO).
 - `sort` (enum, opcional): Ordenamiento (by_match_desc, by_date_desc, by_date_asc).
-- `page` (number, opcional): Número de página para paginación de resultados.
-
-**Respuesta:**
-- `results`: Array de resultados con título, fecha, ID, links de descarga/vista, y extractos del contenido.
-- `pagination`: Información de paginación (currentPage, totalPages, hasNext, hasPrev).
+- `page` (number, opcional): Número de página para paginación.
 
 **Ejemplo de uso (JSON):**
 ```json
@@ -34,11 +33,76 @@ Busca boletines oficiales usando la página de búsqueda del BOPBA con filtros a
 }
 ```
 
-### 2. `descargar_seccion`
+**Respuesta:**
+- `results`: Array de resultados con título, fecha, ID, links de descarga/vista, y extractos del contenido.
+- `pagination`: Información de paginación (currentPage, totalPages, hasNext, hasPrev).
+
+---
+
+### 2. `buscar_por_semantica`
+
+Busca publicaciones en el BOPBA utilizando expansión semántica de términos. El LLM debe generar sinónimos y términos equivalentes antes de llamar esta herramienta.
+
+**Parámetros:**
+- `concepto` (string, **requerido**): Concepto central a buscar (ej. 'teletrabajo', 'licencia parental').
+- `terminos_equivalentes` (array of strings, **requerido**): Lista de sinónimos o términos relacionados generados por el LLM.
+- `fecha_desde` (string, opcional): Fecha desde YYYY-MM-DD.
+- `fecha_hasta` (string, opcional): Fecha hasta YYYY-MM-DD.
+- `seccion` (enum, opcional): Sección del boletín (OFICIAL, JUDICIAL, JURISPRUDENCIA, SUPLEMENTO).
+
+**Ejemplo de uso (JSON):**
+```json
+{
+  "name": "buscar_por_semantica",
+  "arguments": {
+    "concepto": "teletrabajo",
+    "terminos_equivalentes": ["trabajo remoto", "home office", "trabajo a distancia"]
+  }
+}
+```
+
+**Respuesta:**
+- Términos de búsqueda utilizados
+- Lista de publicaciones encontradas con extractos
+
+---
+
+### 3. `relacionar_publicaciones`
+
+Busca publicaciones relacionadas con una sección específica del boletín (mismas fechas, mismos organismos, temas similares).
+
+**Parámetros:**
+- `id` (string, **requerido**): ID de la sección de referencia.
+- `palabras_clave` (string, opcional): Palabras clave adicionales para buscar publicaciones relacionadas.
+- `fecha_desde` (string, opcional): Fecha desde YYYY-MM-DD para ampliar búsqueda.
+- `fecha_hasta` (string, opcional): Fecha hasta YYYY-MM-DD para ampliar búsqueda.
+
+**Ejemplo de uso (JSON):**
+```json
+{
+  "name": "relacionar_publicaciones",
+  "arguments": {
+    "id": "123456",
+    "palabras_clave": "licitación"
+  }
+}
+```
+
+**Respuesta:**
+- Publicación de referencia (título, fecha, ID)
+- Lista de publicaciones relacionadas encontradas
+- Criterio de búsqueda utilizado
+
+---
+
+## Texto y Metadatos
+
+### 4. `descargar_seccion`
+
 Descarga y extrae el texto del PDF de una sección específica del BOPBA.
 
 **Parámetros:**
-- `id` (string, requerido): ID de la sección a descargar (obtenido previamente mediante `buscar_boletin`).
+- `id` (string, **requerido**): ID de la sección a descargar.
 
 **Ejemplo de uso (JSON):**
 ```json
@@ -50,34 +114,119 @@ Descarga y extrae el texto del PDF de una sección específica del BOPBA.
 }
 ```
 
-### 3. `listar_agencias`
-Obtiene el listado completo de agencias del BOPBA con información de contacto.
+**Respuesta:**
+- Texto completo del PDF extraído (limitado a 50,000 caracteres).
+
+---
+
+### 5. `ver_seccion`
+
+Obtiene metadatos y vista previa de una sección específica del boletín.
 
 **Parámetros:**
-- *Sin parámetros.*
-
-**Respuesta:**
-- Array de agencias con número, nombre, dirección, teléfono, horario y email.
+- `id` (string, **requerido**): ID de la sección a ver.
 
 **Ejemplo de uso (JSON):**
 ```json
 {
-  "name": "listar_agencias",
+  "name": "ver_seccion",
+  "arguments": {
+    "id": "14177"
+  }
+}
+```
+
+**Respuesta:**
+- `id`: ID de la sección.
+- `titulo`: Título del documento.
+- `link_ver`: URL de vista.
+- `link_descargar`: URL de descarga del PDF.
+- `contenido_previo`: Contenido previo del documento.
+
+---
+
+### 6. `verificar_vigencia`
+
+Verifica si una sección del boletín está disponible, su fecha de publicación y si hay versiones modificadas o correcciones posteriores.
+
+**Parámetros:**
+- `id` (string, **requerido**): ID de la sección a verificar.
+
+**Ejemplo de uso (JSON):**
+```json
+{
+  "name": "verificar_vigencia",
+  "arguments": {
+    "id": "123456"
+  }
+}
+```
+
+**Respuesta:**
+- Estado de disponibilidad (DISPONIBLE/NO DISPONIBLE)
+- Fecha de publicación
+- Alertas de modificación o corrección
+- Enlaces de vista y descarga
+
+---
+
+### 7. `exportar_seccion`
+
+Exporta una sección del BOPBA a formato Markdown estructurado con frontmatter YAML para sistemas de gestión del conocimiento (Notion, Obsidian, etc.).
+
+**Parámetros:**
+- `id` (string, **requerido**): ID de la sección a exportar.
+- `incluir_texto` (boolean, opcional): Incluir el texto completo del PDF (por defecto: true).
+
+**Ejemplo de uso (JSON):**
+```json
+{
+  "name": "exportar_seccion",
+  "arguments": {
+    "id": "123456",
+    "incluir_texto": true
+  }
+}
+```
+
+**Respuesta:**
+- Documento Markdown con frontmatter YAML
+- Metadatos estructurados (título, fecha, URLs, tags)
+- Contenido exportado listo para sistemas de gestión del conocimiento
+
+---
+
+## Boletín
+
+### 8. `obtener_ultimo_boletin`
+
+Obtiene información del último boletín publicado con sus secciones disponibles.
+
+**Parámetros:**
+- *Ninguno*
+
+**Ejemplo de uso (JSON):**
+```json
+{
+  "name": "obtener_ultimo_boletin",
   "arguments": {}
 }
 ```
 
-### 4. `listar_ediciones_anteriores`
+**Respuesta:**
+- `ultimo_boletin`: Texto con número y fecha del último boletín.
+- `secciones`: Array de secciones con IDs y links.
+
+---
+
+### 9. `listar_ediciones_anteriores`
+
 Lista ediciones anteriores del boletín con filtros de fecha y paginación.
 
 **Parámetros:**
 - `date_gteq` (string, opcional): Fecha desde en formato YYYY-MM-DD.
 - `date_lteq` (string, opcional): Fecha hasta en formato YYYY-MM-DD.
 - `page` (number, opcional): Número de página (por defecto 1).
-
-**Respuesta:**
-- `ediciones`: Array de ediciones con título e información de expansión.
-- `pagination`: Información de paginación.
 
 **Ejemplo de uso (JSON):**
 ```json
@@ -91,75 +240,20 @@ Lista ediciones anteriores del boletín con filtros de fecha y paginación.
 }
 ```
 
-### 5. `calcular_tarifa`
-Calcula la tarifa aproximada de publicación en el BOPBA usando el simulador de tasas.
-
-**Parámetros:**
-- `tipo_publicacion` (enum, requerido): Tipo de publicación (Avisos particulares, Sociedades comerciales, Convocatorias, Transferencias, Edictos judiciales (no sucesorios), Subastas).
-- `texto` (string, requerido): Texto a publicar para contar palabras/caracteres.
-- `dias` (number, opcional): Cantidad de días de publicación (por defecto 1).
-- `urgencia` (enum, opcional): Tipo de trámite (Normal (72 hs.), Urgente (24 hs.)).
-
 **Respuesta:**
-- Estadísticas del texto (palabras, caracteres).
-- Parámetros usados (días, urgencia).
-- Estimación de costo en UT y AR$.
+- `ediciones`: Array de ediciones con título e información de expansión.
+- `pagination`: Información de paginación.
 
-**Ejemplo de uso (JSON):**
-```json
-{
-  "name": "calcular_tarifa",
-  "arguments": {
-    "tipo_publicacion": "Sociedades comerciales",
-    "texto": "Convocatoria a asamblea ordinaria...",
-    "dias": 3,
-    "urgencia": "Normal (72 hs.)"
-  }
-}
-```
+---
 
-### 6. `obtener_ultimo_boletin`
-Obtiene información del último boletín publicado con sus secciones disponibles.
+## Información
 
-**Parámetros:**
-- *Sin parámetros.*
+### 10. `alcance_fuente`
 
-**Respuesta:**
-- `ultimo_boletin`: Texto con número y fecha del último boletín.
-- `secciones`: Array de secciones (OFICIAL, JUDICIAL, SUPLEMENTO) con IDs y links.
-
-**Ejemplo de uso (JSON):**
-```json
-{
-  "name": "obtener_ultimo_boletin",
-  "arguments": {}
-}
-```
-
-### 7. `ver_seccion`
-Obtiene metadatos y vista previa de una sección específica del boletín.
-
-**Parámetros:**
-- `id` (string, requerido): ID de la sección a ver.
-
-**Respuesta:**
-- Título, links de vista/descarga, y contenido previo del documento.
-
-**Ejemplo de uso (JSON):**
-```json
-{
-  "name": "ver_seccion",
-  "arguments": {
-    "id": "14177"
-  }
-}
-```
-
-### 8. `alcance_fuente`
 Obtiene información sobre el alcance, limitaciones y disclaimer del BOPBA.
 
 **Parámetros:**
-- *Sin parámetros.*
+- *Ninguno*
 
 **Ejemplo de uso (JSON):**
 ```json
@@ -169,90 +263,103 @@ Obtiene información sobre el alcance, limitaciones y disclaimer del BOPBA.
 }
 ```
 
-### 9. `verificar_vigencia`
-Verifica si una sección del boletín está disponible, su fecha de publicación y si hay versiones modificadas o correcciones posteriores.
+**Respuesta:**
+- Información sobre el alcance, limitaciones y disclaimer del BOPBA.
+
+---
+
+### 11. `listar_agencias`
+
+Obtiene el listado completo de agencias del BOPBA con información de contacto.
 
 **Parámetros:**
-- `id` (string, requerido): ID de la sección a verificar.
-
-**Respuesta:**
-- Estado de disponibilidad (DISPONIBLE/NO DISPONIBLE)
-- Fecha de publicación
-- Alertas de modificación o corrección
-- Enlaces de vista y descarga
+- *Ninguno*
 
 **Ejemplo de uso (JSON):**
 ```json
 {
-  "name": "verificar_vigencia",
-  "arguments": {
-    "id": "123456"
-  }
+  "name": "listar_agencias",
+  "arguments": {}
 }
 ```
 
-### 10. `relacionar_publicaciones`
-Busca publicaciones relacionadas con una sección específica del boletín (mismas fechas, mismos organismos, temas similares).
+**Respuesta:**
+- Array de agencias con número, nombre, dirección, teléfono, horario y email.
+
+---
+
+## Tasas
+
+### 12. `calcular_tarifa`
+
+Calcula una aproximación de la tarifa de publicación en el BOPBA basándose en las tasas oficiales del flyer. **NOTA:** Este cálculo es una aproximación. Para obtener el precio exacto, códigos QR de pago y enlaces de pago oficiales, debe utilizar el simulador web: https://tasador.boletinoficial.gba.gob.ar/
 
 **Parámetros:**
-- `id` (string, requerido): ID de la sección de referencia.
-- `palabras_clave` (string, opcional): Palabras clave adicionales para buscar publicaciones relacionadas.
-- `fecha_desde` (string, opcional): Fecha desde YYYY-MM-DD para ampliar búsqueda.
-- `fecha_hasta` (string, opcional): Fecha hasta YYYY-MM-DD para ampliar búsqueda.
-
-**Respuesta:**
-- Publicación de referencia (título, fecha, ID)
-- Lista de publicaciones relacionadas encontradas
-- Criterio de búsqueda utilizado
+- `categoria` (enum, **requerido**): Categoría de publicación (Edictos sucesorios, Avisos por palabras, Balances, Entidades Financieras, Otras Sociedades, Constitución de SAS).
+- `texto` (string, opcional): Texto a publicar (requerido para 'Avisos por palabras').
+- `dias` (enum, opcional): Cantidad de días (1 o 3, requerido para 'Edictos sucesorios').
+- `urgencia` (enum, opcional): Tipo de trámite (Normal (72 hs.), Urgente (24 hs.)).
+- `actualizar` (boolean, opcional): Forzar actualización desde PDF oficial.
 
 **Ejemplo de uso (JSON):**
 ```json
 {
-  "name": "relacionar_publicaciones",
+  "name": "calcular_tarifa",
   "arguments": {
-    "id": "123456",
-    "palabras_clave": "licitación"
+    "categoria": "Avisos por palabras",
+    "texto": "Convocatoria a asamblea ordinaria...",
+    "urgencia": "Normal (72 hs.)"
   }
 }
 ```
 
-### 11. `buscar_por_semantica`
-Busca publicaciones en el BOPBA utilizando expansión semántica de términos. El LLM debe generar sinónimos y términos equivalentes antes de llamar esta herramienta.
+**Respuesta:**
+- `categoria`: Categoría de publicación.
+- `urgencia`: Tipo de trámite.
+- `calculo`: Detalles del cálculo (valor en UT y AR$).
+- `advertencia`: Advertencia sobre que es una aproximación.
+- `fuente`: Fuente de las tasas.
+- `url_verificacion`: URL del simulador web oficial.
+- `url_pago_oficial`: URL para obtener precios exactos y métodos de pago.
+- `version_tasas`: Versión de las tasas utilizadas.
+- `ultima_actualizacion`: Fecha de última actualización.
+
+---
+
+### 13. `actualizar_tasas`
+
+Verifica y actualiza las tasas desde el PDF oficial del BOPBA si hay cambios.
 
 **Parámetros:**
-- `concepto` (string, requerido): Concepto central a buscar (ej. 'teletrabajo', 'licencia parental').
-- `terminos_equivalentes` (array of strings, requerido): Lista de sinónimos o términos relacionados generados por el LLM.
-- `fecha_desde` (string, opcional): Fecha desde YYYY-MM-DD.
-- `fecha_hasta` (string, opcional): Fecha hasta YYYY-MM-DD.
-- `seccion` (enum, opcional): Sección del boletín (OFICIAL, JUDICIAL, JURISPRUDENCIA, SUPLEMENTO).
-
-**Respuesta:**
-- Términos de búsqueda utilizados
-- Lista de publicaciones encontradas con extractos
+- `forzar` (boolean, opcional): Forzar actualización incluso si el PDF no cambió.
 
 **Ejemplo de uso (JSON):**
 ```json
 {
-  "name": "buscar_por_semantica",
+  "name": "actualizar_tasas",
   "arguments": {
-    "concepto": "teletrabajo",
-    "terminos_equivalentes": ["trabajo remoto", "home office", "trabajo a distancia"]
+    "forzar": true
   }
 }
 ```
 
-### 12. `generar_certificacion_forense`
+**Respuesta:**
+- `mensaje`: Mensaje de estado de la actualización.
+- `version`: Versión de las tasas actualizadas.
+- `ultima_actualizacion`: Fecha de última actualización.
+- `pdf_hash`: Hash del PDF para verificación de cambios.
+- `url_origen`: URL del PDF oficial.
+
+---
+
+## Análisis Forense
+
+### 14. `generar_certificacion_forense`
+
 Genera una certificación forense de autenticidad para una sección del BOPBA con hash SHA-256, timestamp y metadatos de integridad.
 
 **Parámetros:**
-- `id` (string, requerido): ID de la sección a certificar.
-
-**Respuesta:**
-- Acta de certificación forense
-- Hash SHA-256 del documento
-- Timestamp UTC
-- Metadatos de integridad (tamaño, URLs)
-- Método de verificación
+- `id` (string, **requerido**): ID de la sección a certificar.
 
 **Ejemplo de uso (JSON):**
 ```json
@@ -264,41 +371,22 @@ Genera una certificación forense de autenticidad para una sección del BOPBA co
 }
 ```
 
-### 13. `exportar_seccion`
-Exporta una sección del BOPBA a formato Markdown estructurado con frontmatter YAML para sistemas de gestión del conocimiento (Notion, Obsidian, etc.).
-
-**Parámetros:**
-- `id` (string, requerido): ID de la sección a exportar.
-- `incluir_texto` (boolean, opcional): Incluir el texto completo del PDF (por defecto: true).
-
 **Respuesta:**
-- Documento Markdown con frontmatter YAML
-- Metadatos estructurados (título, fecha, URLs, tags)
-- Contenido exportado listo para sistemas de gestión del conocimiento
+- Acta de certificación forense
+- Hash SHA-256 del documento
+- Timestamp UTC
+- Metadatos de integridad (tamaño, URLs)
+- Método de verificación
 
-**Ejemplo de uso (JSON):**
-```json
-{
-  "name": "exportar_seccion",
-  "arguments": {
-    "id": "123456",
-    "incluir_texto": true
-  }
-}
-```
+---
 
-### 14. `detector_plazos_edictos`
+### 15. `detector_plazos_edictos`
+
 Audita el texto de una sección del BOPBA para detectar e indexar plazos, fechas límite y hitos temporales relevantes (especialmente útil para edictos sucesorios).
 
 **Parámetros:**
-- `id` (string, requerido): ID de la sección a auditar.
+- `id` (string, **requerido**): ID de la sección a auditar.
 - `texto_manual` (string, opcional): Texto manual para analizar (si no se proporciona descarga el PDF).
-
-**Respuesta:**
-- Auditoría de plazos y hitos temporales
-- Cláusulas temporales detectadas con indicadores
-- Patrones de búsqueda utilizados
-- Resumen de hallazgos
 
 **Ejemplo de uso (JSON):**
 ```json
@@ -310,134 +398,9 @@ Audita el texto de una sección del BOPBA para detectar e indexar plazos, fechas
 }
 ```
 
----
+**Respuesta:**
+- Auditoría de plazos y hitos temporales
+- Cláusulas temporales detectadas con indicadores
+- Patrones de búsqueda utilizados
+- Resumen de hallazgos
 
-## Prompts Programáticos (V2)
-
-El servidor expone prompts preconfigurados para automatizar flujos de trabajo comunes.
-
-### 1. `buscar_edicto`
-Plantilla para buscar un edicto específico y procesar sus resultados.
-
-**Argumentos:**
-- `query` (string, requerido): Términos de búsqueda del edicto.
-
-**Ejemplo de uso (JSON):**
-```json
-{
-  "name": "buscar_edicto",
-  "arguments": {
-    "query": "sucesorio Perez"
-  }
-}
-```
-
-### 2. `auditar_seccion_bopba`
-Audita y analiza una sección descargada del BOPBA en busca de normativas clave, licitaciones o nombramientos.
-
-**Argumentos:**
-- `id` (string, requerido): ID de la sección del boletín a auditar.
-
-**Ejemplo de uso (JSON):**
-```json
-{
-  "name": "auditar_seccion_bopba",
-  "arguments": {
-    "id": "123456"
-  }
-}
-```
-
-### 3. `investigar_sociedad`
-Investiga publicaciones de una sociedad comercial específica en el BOPBA.
-
-**Argumentos:**
-- `nombre_sociedad` (string, requerido): Nombre de la sociedad a investigar.
-- `fecha_desde` (string, opcional): Fecha desde YYYY-MM-DD.
-- `fecha_hasta` (string, opcional): Fecha hasta YYYY-MM-DD.
-
-**Ejemplo de uso (JSON):**
-```json
-{
-  "name": "investigar_sociedad",
-  "arguments": {
-    "nombre_sociedad": "Tech Solutions S.A.",
-    "fecha_desde": "2023-01-01",
-    "fecha_hasta": "2023-12-31"
-  }
-}
-```
-
-### 4. `consultar_agencia_cercana`
-Consulta información de agencias del BOPBA para publicación presencial.
-
-**Argumentos:**
-- `zona` (string, opcional): Zona o ciudad de interés.
-
-**Ejemplo de uso (JSON):**
-```json
-{
-  "name": "consultar_agencia_cercana",
-  "arguments": {
-    "zona": "La Plata"
-  }
-}
-```
-
-### 5. `calcular_costo_publicacion`
-Calcula el costo estimado de una publicación en el BOPBA.
-
-**Argumentos:**
-- `tipo` (string, requerido): Tipo de publicación.
-- `texto` (string, requerido): Texto completo a publicar.
-- `dias` (string, opcional): Cantidad de días.
-- `urgencia` (string, opcional): Normal o Urgente.
-
-**Ejemplo de uso (JSON):**
-```json
-{
-  "name": "calcular_costo_publicacion",
-  "arguments": {
-    "tipo": "Sociedades comerciales",
-    "texto": "Texto completo...",
-    "dias": "3",
-    "urgencia": "Normal"
-  }
-}
-```
-
-### 6. `monitorear_ultimas_publicaciones`
-Monitorea las últimas publicaciones del BOPBA en secciones específicas.
-
-**Argumentos:**
-- `seccion` (enum, opcional): Sección de interés (OFICIAL, JUDICIAL, JURISPRUDENCIA, SUPLEMENTO).
-
-**Ejemplo de uso (JSON):**
-```json
-{
-  "name": "monitorear_ultimas_publicaciones",
-  "arguments": {
-    "seccion": "OFICIAL"
-  }
-}
-```
-
-### 7. `buscar_normativa_periodo`
-Busca normativas publicadas en un período específico.
-
-**Argumentos:**
-- `fecha_desde` (string, requerido): Fecha desde YYYY-MM-DD.
-- `fecha_hasta` (string, requerido): Fecha hasta YYYY-MM-DD.
-- `palabras_clave` (string, opcional): Palabras clave para filtrar.
-
-**Ejemplo de uso (JSON):**
-```json
-{
-  "name": "buscar_normativa_periodo",
-  "arguments": {
-    "fecha_desde": "2023-01-01",
-    "fecha_hasta": "2023-12-31",
-    "palabras_clave": "educación"
-  }
-}
-```
