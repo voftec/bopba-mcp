@@ -1,17 +1,41 @@
 {
-  "name": "argentina-bopba-mcp",
-  "version": "1.0.0",
+  "name": "bopba-mcp",
+  "version": "1.0.3",
   "description": "Boletín Oficial de la Provincia de Buenos Aires MCP server",
   "type": "module",
   "bin": {
-    "argentina-bopba-mcp": "./build/index.js"
+    "bopba-mcp": "./build/index.js"
   },
   "main": "build/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/voftec/bopba-mcp.git"
+  },
+  "homepage": "https://github.com/voftec/bopba-mcp#readme",
+  "files": [
+    "build",
+    "README.md",
+    "TOOLS.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc",
-    "start": "node build/index.js",
-    "dev": "tsc --watch"
+    "dev": "tsc -w",
+    "start": "node build/index.js"
   },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "argentina",
+    "bopba",
+    "boletin-oficial",
+    "provincia-buenos-aires",
+    "legal",
+    "scraper",
+    "voftec"
+  ],
+  "author": "Voftec",
+  "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.6.0",
     "axios": "^1.7.9",

@@ -1,0 +1,46 @@
+# Source files
+src/
+*.ts
+tsconfig.json
+
+# Dependencies
+node_modules/
+
+# Development files
+.git/
+.gitignore
+.gitattributes
+
+# Build artifacts (keep build/ for distribution)
+# build/ is included as it's the main entry point
+
+# Documentation (optional, can be included)
+# README.md
+# LICENSE
+# TOOLS.md
+
+# Test files
+*.test.ts
+*.test.js
+test/
+tests/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+*.log
+.env
+.env.local
+.env.*.local
