@@ -2,6 +2,8 @@
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.4-blue.svg)](https://www.typescriptlang.org/)
 [![MCP](https://img.shields.io/badge/Model_Context_Protocol-1.5.0-green.svg)](https://modelcontextprotocol.io/)
+[![Vercel](https://img.shields.io/badge/Deployed_on-Vercel-black.svg?logo=vercel)](https://bopba-mcp.vercel.app)
+[![NPM Version](https://img.shields.io/npm/v/bopba-mcp?color=cb3837&logo=npm)](https://www.npmjs.com/package/bopba-mcp)
 
 MCP Server para buscar y extraer legislación provincial del **Boletín Oficial de la Provincia de Buenos Aires (BOPBA)**. Conecta cualquier LLM compatible (Claude, Cursor, Antigravity) con el portal oficial provincial para realizar búsquedas en tiempo real y extraer el articulado completo con **fidelidad jurídica sin alucinaciones**.
 
